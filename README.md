@@ -1,6 +1,6 @@
-# RusticCosmos
+# OrionPixel
 
-RusticCosmos is a 2D Game Engine written in Rust exposing multiple APIs. This engine is meant to be native to Rust.
+OrionPixel is a 2D Game Engine written to be as simple as possible to create games. It is written in C#.
 
 Important Note: This engine is still in development and is not ready for use.
 
