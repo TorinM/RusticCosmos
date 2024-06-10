@@ -135,3 +135,4 @@ _NCrunch*
 # Added by cargo
 
 /target
+Cargo.lock
