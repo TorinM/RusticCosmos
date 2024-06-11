@@ -1,9 +1,13 @@
+use std::net::Ipv4Addr;
 use pnet::datalink::{self, NetworkInterface, DataLinkReceiver};
+use pnet::packet::Packet;
 use datalink::Channel::Ethernet;
+use pnet::packet::ipv4::Ipv4Packet;
+use pnet::packet::ethernet::EthernetPacket;
 
 pub fn open_listener() -> Box<dyn DataLinkReceiver> {
 
-    let interface_name = "en0";
+    let interface_name = "en0"; // Preset interface name
 
     let interface = datalink::interfaces()
         .into_iter()
@@ -23,4 +27,22 @@ pub fn open_listener() -> Box<dyn DataLinkReceiver> {
     };
 
     rx
+}
+
+pub fn get_source_dest_ips_from_ethernet_packet(eth_packet:&EthernetPacket) -> Result<(Ipv4Addr, Ipv4Addr), String> {
+    match eth_packet.get_ethertype() {
+        pnet::packet::ethernet::EtherTypes::Ipv4 => {
+            if let Some(ipv4_packet) = Ipv4Packet::new(eth_packet.payload()) {
+                let source_ip = ipv4_packet.get_source();
+                let destination_ip = ipv4_packet.get_destination();
+
+                Ok((source_ip, destination_ip))
+            }
+            else {
+                Err(String::from("Failed to parse IPv4 packet"))
+            }
+        },
+        pnet::packet::ethernet::EtherTypes::Ipv6 => Err(String::from("Ipv6 not supported")),
+        _ => Err(String::from("Unknown ethertype"))
+    }
 }
