@@ -2,6 +2,13 @@
 name = "rusticcosmos"
 version = "0.1.0"
 edition = "2021"
+authors = ["Torin May <torinmay@gmail.com"]
+description = "A command line tool for translating packets on a network interface to human-readable form"
+readme = "README.md"
+homepage = "https://github.com/TorinM/rusticcosmos"
+repository = "https://github.com/TorinM/rusticcosmos"
+keywords = ["cli", "cybersecurity", "cyber", "security", "packet", "sniffing"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 dns-lookup = "2.0.4"
