@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 
 use clap::{Arg, Command};
 
-use crate::format::write_file;
+use crate::output::write_file;
 
 #[derive(Debug)]
 pub struct Config {
