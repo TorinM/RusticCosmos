@@ -1,8 +1,11 @@
 use pnet::datalink::NetworkInterface;
 use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
 
+use serde_derive::{Serialize, Deserialize};
+
 use crate::network::types;
 
+#[derive(Serialize, Deserialize)]
 pub enum EthernetFrame {
     IPv4(types::IPv4),
     IPv6(types::IPv6),
