@@ -1,12 +1,15 @@
 use std::net::{IpAddr, Ipv4Addr};
 
-use pnet::packet::{self, Packet};
+use pnet::packet::Packet;
 use pnet::packet::tcp::TcpPacket;
 use pnet::packet::udp::UdpPacket;
 use pnet::packet::ipv4::Ipv4Packet;
+use pnet::packet::ipv6::Ipv6Packet;
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::packet::ip::IpNextHeaderProtocols;
+use pnet::packet::arp::{ArpPacket, ArpOperation};
 use pnet::packet::icmp::{IcmpTypes, IcmpPacket, echo_reply, echo_request};
+use pnet::util::MacAddr;
 
 fn handle_icmp(payload: &[u8]) -> (String, u16, u16, Vec<u8>) {
     let icmp_frame: IcmpPacket = IcmpPacket::new(payload).expect("Unable to parse ICMP packet");
@@ -32,6 +35,7 @@ fn handle_icmp(payload: &[u8]) -> (String, u16, u16, Vec<u8>) {
     }
 }
 
+#[derive(Debug)]
 pub struct IPv4 {
     pub interface: String,
     pub source_ip: IpAddr,
@@ -42,8 +46,8 @@ pub struct IPv4 {
     pub packet: Vec<u8>,
 }
 impl IPv4 {
-    pub fn new(interface_name: String, packet: &EthernetPacket) -> Result<Self, Box<dyn std::error::Error>> {
-        let payload = packet.payload();
+    pub fn new(interface_name: String, ethernet_packet: &EthernetPacket) -> Result<Self, Box<dyn std::error::Error>> {
+        let payload = ethernet_packet.payload();
 
         let header = Ipv4Packet::new(payload).expect(&format!("[{}]: Malformed IPv4 packet", interface_name));
 
@@ -91,6 +95,106 @@ impl IPv4 {
             destination_port: destination_port,
             transport_protocol: transport_protocol,
             packet: packet
+        })
+    }
+}
+
+/*
+-------------------------------------------------
+*/
+
+#[derive(Debug)]
+pub struct IPv6 {
+    pub interface: String,
+    pub source_ip: IpAddr,
+    pub source_port: u16,
+    pub destination_ip: IpAddr,
+    pub destination_port: u16,
+    pub transport_protocol: String,
+    pub packet: Vec<u8>,
+}
+impl IPv6 {
+    pub fn new(interface_name: String, ethernet_packet: &EthernetPacket) -> Result<Self, Box<dyn std::error::Error>> {
+        let payload = ethernet_packet.payload();
+
+        let header = Ipv6Packet::new(payload).expect(&format!("[{}]: Malformed IPv6 packet", interface_name));
+
+        let source_port;
+        let destination_port;
+        let transport_protocol;
+        let packet;
+        match header.get_next_header() {
+            IpNextHeaderProtocols::Tcp => {
+                let tcp_frame = TcpPacket::new(payload).expect("Unable to parse TCP packet");
+
+                transport_protocol = "TCP".to_string();
+                source_port = tcp_frame.get_source();
+                destination_port = tcp_frame.get_destination();
+                packet = tcp_frame.packet().to_vec();
+            }
+            IpNextHeaderProtocols::Udp => {
+                let udp_frame = UdpPacket::new(payload).expect("Unable to parse UDP packet");
+
+                transport_protocol = "UDP".to_string();
+                source_port = udp_frame.get_source();
+                destination_port = udp_frame.get_destination();
+                packet = udp_frame.packet().to_vec();
+            }
+            IpNextHeaderProtocols::Icmp => {
+                let (icmp_type, icmp_seq, icmp_id, icmp_packet) = handle_icmp(payload);
+                transport_protocol = format!("ICMP - {}", icmp_type);
+                source_port = icmp_seq;
+                destination_port = icmp_id;
+                packet = icmp_packet;
+            }
+            _ => {
+                transport_protocol = "Unknown".to_string();
+                source_port = 0;
+                destination_port = 0;
+                packet = Vec::<u8>::new();
+            }
+        }
+
+        Ok(IPv6 {
+            interface: interface_name,
+            source_ip: IpAddr::V6(header.get_source()),
+            source_port: source_port,
+            destination_ip: IpAddr::V6(header.get_destination()),
+            destination_port: destination_port,
+            transport_protocol: transport_protocol,
+            packet: packet
+        })
+    }
+}
+
+/*
+-------------------------------------------------
+*/
+
+#[derive(Debug)]
+pub struct Arp {
+    pub interface: String,
+    pub source_mac: MacAddr,
+    pub source_proto_address: Ipv4Addr,
+    pub destination_mac: MacAddr,
+    pub destination_proto_address: Ipv4Addr,
+    pub operation: ArpOperation,
+    pub packet: Vec<u8>,
+}
+impl Arp {
+    pub fn new(interface_name: String, ethernet_packet: &EthernetPacket) -> Result<Self, Box<dyn std::error::Error>> {
+        let payload = ethernet_packet.payload();
+
+        let header = ArpPacket::new(payload).expect(&format!("[{}]: Malformed Arp packet", interface_name));
+
+        Ok(Arp {
+            interface: interface_name,
+            source_mac: ethernet_packet.get_source(),
+            source_proto_address: header.get_sender_proto_addr(),
+            destination_mac: ethernet_packet.get_destination(),
+            destination_proto_address: header.get_target_proto_addr(),
+            operation: header.get_operation(),
+            packet: header.payload().to_vec()
         })
     }
 }
