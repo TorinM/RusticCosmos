@@ -3,13 +3,23 @@ use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
 
 use crate::network::types;
 
-#[derive(Debug)]
 pub enum EthernetFrame {
     IPv4(types::IPv4),
     IPv6(types::IPv6),
     Arp(types::Arp),
     Unknown,
 }
+impl std::fmt::Display for EthernetFrame {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EthernetFrame::IPv4(frame) => write!(f, "{}", frame),
+            EthernetFrame::IPv6(frame) => write!(f, "{}", frame),
+            EthernetFrame::Arp(frame) => write!(f, "{}", frame),
+            EthernetFrame::Unknown => write!(f, "Unknown Ethernet Frame"),
+        }
+    }
+}
+
 
 pub fn handle_ethernet_frame(interface: &NetworkInterface, ethernet: &EthernetPacket) -> Result<EthernetFrame, Box<dyn std::error::Error>> {
     let interface_name = &interface.name[..];

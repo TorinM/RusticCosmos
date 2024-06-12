@@ -1,8 +1,9 @@
-use pnet::packet::ethernet::EthernetPacket;
 use pnet::datalink::DataLinkReceiver;
+use pnet::packet::ethernet::EthernetPacket;
 
-mod network;
 mod config;
+mod format;
+mod network;
 
 fn main() -> Result<(), Box<dyn std::error::Error>>{
     let config = config::CONFIG.lock().unwrap();
@@ -38,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
                 };
 
                 print!("{}[2J", 27 as char);
-                println!("{:?}", eth);
+                println!("{}", eth);
             },
             Err(e) => {
                 println!("An error occurred while reading: {}", e);

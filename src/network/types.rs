@@ -35,7 +35,6 @@ fn handle_icmp(payload: &[u8]) -> (String, u16, u16, Vec<u8>) {
     }
 }
 
-#[derive(Debug)]
 pub struct IPv4 {
     pub interface: String,
     pub source_ip: IpAddr,
@@ -98,12 +97,27 @@ impl IPv4 {
         })
     }
 }
+impl std::fmt::Display for IPv4 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "({}) : IPv4-{} : {}:{} -> {}:{}
+            \tPacket: {:?}",
+            self.interface,
+            self.transport_protocol,
+            self.source_ip,
+            self.source_port,
+            self.destination_ip,
+            self.destination_port,
+            self.packet
+        )
+    }
+}
 
 /*
 -------------------------------------------------
 */
 
-#[derive(Debug)]
 pub struct IPv6 {
     pub interface: String,
     pub source_ip: IpAddr,
@@ -166,12 +180,27 @@ impl IPv6 {
         })
     }
 }
+impl std::fmt::Display for IPv6 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "({}) : IPv6-{} : {}:{} -> {}:{}
+            \tPacket: {:?}",
+            self.interface,
+            self.transport_protocol,
+            self.source_ip,
+            self.source_port,
+            self.destination_ip,
+            self.destination_port,
+            self.packet
+        )
+    }
+}
 
 /*
 -------------------------------------------------
 */
 
-#[derive(Debug)]
 pub struct Arp {
     pub interface: String,
     pub source_mac: MacAddr,
@@ -196,5 +225,21 @@ impl Arp {
             operation: header.get_operation(),
             packet: header.payload().to_vec()
         })
+    }
+}
+impl std::fmt::Display for Arp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "({}) : ARP {:?} : {}({}) -> {}({})
+            \tPacket: {:?}",
+            self.interface,
+            self.operation,
+            self.source_mac,
+            self.source_proto_address,
+            self.destination_mac,
+            self.destination_proto_address,
+            self.packet
+        )
     }
 }
