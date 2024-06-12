@@ -7,9 +7,10 @@ use pnet::packet::ipv4::Ipv4Packet;
 use pnet::packet::ipv6::Ipv6Packet;
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::packet::ip::IpNextHeaderProtocols;
-use pnet::packet::arp::{ArpPacket, ArpOperation};
+use pnet::packet::arp::{ArpPacket, ArpOperations};
 use pnet::packet::icmp::{IcmpTypes, IcmpPacket, echo_reply, echo_request};
-use pnet::util::MacAddr;
+
+use serde_derive::{Serialize, Deserialize};
 
 fn handle_icmp(payload: &[u8]) -> (String, u16, u16, Vec<u8>) {
     let icmp_frame: IcmpPacket = IcmpPacket::new(payload).expect("Unable to parse ICMP packet");
@@ -35,6 +36,7 @@ fn handle_icmp(payload: &[u8]) -> (String, u16, u16, Vec<u8>) {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct IPv4 {
     pub interface: String,
     pub source_ip: IpAddr,
@@ -118,6 +120,7 @@ impl std::fmt::Display for IPv4 {
 -------------------------------------------------
 */
 
+#[derive(Serialize, Deserialize)]
 pub struct IPv6 {
     pub interface: String,
     pub source_ip: IpAddr,
@@ -201,13 +204,14 @@ impl std::fmt::Display for IPv6 {
 -------------------------------------------------
 */
 
+#[derive(Serialize, Deserialize)]
 pub struct Arp {
     pub interface: String,
-    pub source_mac: MacAddr,
+    pub source_mac: String,
     pub source_proto_address: Ipv4Addr,
-    pub destination_mac: MacAddr,
+    pub destination_mac: String,
     pub destination_proto_address: Ipv4Addr,
-    pub operation: ArpOperation,
+    pub operation: String,
     pub packet: Vec<u8>,
 }
 impl Arp {
@@ -215,14 +219,21 @@ impl Arp {
         let payload = ethernet_packet.payload();
 
         let header = ArpPacket::new(payload).expect(&format!("[{}]: Malformed Arp packet", interface_name));
+        
+        let operation = header.get_operation();
+        let operation_string = match operation {
+            ArpOperations::Request => "Request".to_string(),
+            ArpOperations::Reply => "Reply".to_string(),
+            _ => "Unknown".to_string(),
+        };
 
         Ok(Arp {
             interface: interface_name,
-            source_mac: ethernet_packet.get_source(),
+            source_mac: ethernet_packet.get_source().to_string(),
             source_proto_address: header.get_sender_proto_addr(),
-            destination_mac: ethernet_packet.get_destination(),
+            destination_mac: ethernet_packet.get_destination().to_string(),
             destination_proto_address: header.get_target_proto_addr(),
-            operation: header.get_operation(),
+            operation: operation_string,
             packet: header.payload().to_vec()
         })
     }
