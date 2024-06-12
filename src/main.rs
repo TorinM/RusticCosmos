@@ -1,18 +1,14 @@
-use std::env;
-
 use pnet::packet::ethernet::EthernetPacket;
 use pnet::datalink::DataLinkReceiver;
 
 mod network;
+mod config;
 
 fn main() -> Result<(), Box<dyn std::error::Error>>{
-    let interface_name = match env::args().nth(1) {
-        Some(n) => n,
-        None => {
-            Err("USAGE: rusticcosmos <interface>")?
-        }
-    };
-    
+    let config = config::CONFIG.lock().unwrap();
+
+    let interface_name = config.interface.clone();
+
     let interface = match network::datalink::get_interface(&interface_name) {
         Ok(i) => i,
         Err(e) => {
@@ -41,8 +37,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
                     }
                 };
 
+                print!("{}[2J", 27 as char);
                 println!("{:?}", eth);
-  
             },
             Err(e) => {
                 println!("An error occurred while reading: {}", e);

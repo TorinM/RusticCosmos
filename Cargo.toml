@@ -11,5 +11,7 @@ keywords = ["cli", "cybersecurity", "cyber", "security", "packet", "sniffing"]
 categories = ["command-line-utilities"]
 
 [dependencies]
+clap = { version = "4.5.7", features = ["derive"] }
 dns-lookup = "2.0.4"
+once_cell = "1.19.0"
 pnet = "0.35.0"
