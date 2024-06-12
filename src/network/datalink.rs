@@ -2,7 +2,6 @@ use pnet::util::MacAddr;
 
 use pnet::datalink::Channel::Ethernet;
 use pnet::datalink::{self, NetworkInterface, DataLinkReceiver};
-
 use pnet::packet::ipv4::Ipv4Packet;
 use pnet::packet::ethernet::{EtherTypes, MutableEthernetPacket};
 
@@ -30,30 +29,42 @@ pub fn open_listener(interface: &NetworkInterface) -> Box<dyn DataLinkReceiver> 
     rx
 }
 
-pub fn generate_fake_ethernet_frame<'a>(packet: &[u8], buf: &'a mut[u8], interface: &NetworkInterface) -> Result<MutableEthernetPacket<'a>, String> {
-    let mut payload_offset = 0;
-    let mut fake_ethernet_frame = MutableEthernetPacket::new(&mut buf[..]).unwrap();
-
-    if interface.is_loopback(){
-        payload_offset = 14;
-    }
-    match Ipv4Packet::new(&packet[payload_offset..]).unwrap().get_version() {
-        4 => {
-            fake_ethernet_frame.set_destination(MacAddr(0, 0, 0, 0, 0, 0));
-            fake_ethernet_frame.set_source(MacAddr(0, 0, 0, 0, 0, 0));
-            fake_ethernet_frame.set_ethertype(EtherTypes::Ipv4);
-            fake_ethernet_frame.set_payload(&packet[payload_offset..]);
-            Ok(fake_ethernet_frame)
-        },
-        6 => {
-            fake_ethernet_frame.set_destination(MacAddr(0, 0, 0, 0, 0, 0));
-            fake_ethernet_frame.set_source(MacAddr(0, 0, 0, 0, 0, 0));
-            fake_ethernet_frame.set_ethertype(EtherTypes::Ipv6);
-            fake_ethernet_frame.set_payload(&packet[payload_offset..]);
-            Ok(fake_ethernet_frame)
+pub fn generate_fake_ethernet_frame(packet: &[u8], interface: &NetworkInterface) -> Result<Option<(Vec<u8>, MutableEthernetPacket<'static>)>, String> {
+    if cfg!(target_os = "macos") // Workaround for macOS to make a fake Ethernet frame
+        && interface.is_broadcast()
+        && !interface.is_broadcast()
+        && ((!interface.is_loopback() && interface.is_point_to_point()) || interface.is_loopback())
+    {
+        let buf = vec![0; 1600];
+        let mut payload_offset = 0;
+    
+        let mut fake_ethernet_frame = MutableEthernetPacket::owned(buf.clone()).unwrap();
+    
+        if interface.is_loopback(){
+            payload_offset = 14;
         }
-        _ => {
-            Err("Unknown packet version.".to_string())
+        match Ipv4Packet::new(&packet[payload_offset..]).unwrap().get_version() {
+            4 => {
+                fake_ethernet_frame.set_destination(MacAddr(0, 0, 0, 0, 0, 0));
+                fake_ethernet_frame.set_source(MacAddr(0, 0, 0, 0, 0, 0));
+                fake_ethernet_frame.set_ethertype(EtherTypes::Ipv4);
+                fake_ethernet_frame.set_payload(&packet[payload_offset..]);
+                Ok(Some((buf, fake_ethernet_frame)))
+            },
+            6 => {
+                fake_ethernet_frame.set_destination(MacAddr(0, 0, 0, 0, 0, 0));
+                fake_ethernet_frame.set_source(MacAddr(0, 0, 0, 0, 0, 0));
+                fake_ethernet_frame.set_ethertype(EtherTypes::Ipv6);
+                fake_ethernet_frame.set_payload(&packet[payload_offset..]);
+                Ok(Some((buf, fake_ethernet_frame)))
+            }
+            _ => {
+                Err("Unknown IP version".to_string())
+            }
         }
     }
+    else {
+        Ok(None)
+    }
+    
 }
