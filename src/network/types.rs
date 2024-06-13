@@ -59,6 +59,7 @@ impl IPv4 {
         let destination_port;
         let transport_protocol;
         let packet;
+        let payload;
         match header.get_next_level_protocol() {
             IpNextHeaderProtocols::Tcp => {
                 let tcp_frame = TcpPacket::new(ethernet_payload).expect("Unable to parse TCP packet");
@@ -67,6 +68,12 @@ impl IPv4 {
                 source_port = tcp_frame.get_source();
                 destination_port = tcp_frame.get_destination();
                 packet = tcp_frame.packet().to_vec();
+                payload = match packet_payload_to_string(tcp_frame.payload().to_vec()){
+                    Ok(p) => p,
+                    Err(e) => {
+                        format!("Error converting packet payload to string {}", e).to_string()
+                    }
+                };
             }
             IpNextHeaderProtocols::Udp => {
                 let udp_frame = UdpPacket::new(ethernet_payload).expect("Unable to parse UDP packet");
@@ -75,29 +82,34 @@ impl IPv4 {
                 source_port = udp_frame.get_source();
                 destination_port = udp_frame.get_destination();
                 packet = udp_frame.packet().to_vec();
+                payload = match packet_payload_to_string(udp_frame.payload().to_vec()){
+                    Ok(p) => p,
+                    Err(e) => {
+                        format!("Error converting packet payload to string {}", e).to_string()
+                    }
+                };
             }
             IpNextHeaderProtocols::Icmp => {
                 let (icmp_type, icmp_seq, icmp_id, icmp_packet) = handle_icmp(ethernet_payload);
                 transport_protocol = format!("ICMP - {}", icmp_type);
                 source_port = icmp_seq;
                 destination_port = icmp_id;
-                packet = icmp_packet;
+                packet = icmp_packet.clone();
+                payload = match packet_payload_to_string(icmp_packet){
+                    Ok(p) => p,
+                    Err(e) => {
+                        format!("Error converting packet payload to string {}", e).to_string()
+                    }
+                };
             }
             _ => {
                 transport_protocol = "Unknown".to_string();
                 source_port = 0;
                 destination_port = 0;
                 packet = Vec::<u8>::new();
+                payload = "Unknown".to_string();
             }
         }
-
-        let payload = match packet_payload_to_string(header.payload()){
-            Ok(p) => p,
-            Err(e) => {
-                eprintln!("Error converting packet payload to string: {}", e);
-                "Error converting packet payload to string".to_string()
-            }
-        };
 
         Ok(IPv4 {
             interface: interface_name,
@@ -115,9 +127,7 @@ impl std::fmt::Display for IPv4 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "({}) : IPv4-{} : {}:{} -> {}:{}
-            \tPacket: {:?}
-            \tPayload: {}",
+            "({}) : IPv4-{} : {}:{} -> {}:{}\n--\nPacket: {:?}\n--\nPayload: {}",
             self.interface,
             self.transport_protocol,
             self.source_ip,
@@ -155,6 +165,7 @@ impl IPv6 {
         let destination_port;
         let transport_protocol;
         let packet;
+        let payload;
         match header.get_next_header() {
             IpNextHeaderProtocols::Tcp => {
                 let tcp_frame = TcpPacket::new(ethernet_payload).expect("Unable to parse TCP packet");
@@ -163,6 +174,12 @@ impl IPv6 {
                 source_port = tcp_frame.get_source();
                 destination_port = tcp_frame.get_destination();
                 packet = tcp_frame.packet().to_vec();
+                payload = match packet_payload_to_string(tcp_frame.payload().to_vec()){
+                    Ok(p) => p,
+                    Err(e) => {
+                        format!("Error converting packet payload to string {}", e).to_string()
+                    }
+                };
             }
             IpNextHeaderProtocols::Udp => {
                 let udp_frame = UdpPacket::new(ethernet_payload).expect("Unable to parse UDP packet");
@@ -171,29 +188,34 @@ impl IPv6 {
                 source_port = udp_frame.get_source();
                 destination_port = udp_frame.get_destination();
                 packet = udp_frame.packet().to_vec();
+                payload = match packet_payload_to_string(udp_frame.payload().to_vec()){
+                    Ok(p) => p,
+                    Err(e) => {
+                        format!("Error converting packet payload to string {}", e).to_string()
+                    }
+                };
             }
             IpNextHeaderProtocols::Icmp => {
                 let (icmp_type, icmp_seq, icmp_id, icmp_packet) = handle_icmp(ethernet_payload);
                 transport_protocol = format!("ICMP - {}", icmp_type);
                 source_port = icmp_seq;
                 destination_port = icmp_id;
-                packet = icmp_packet;
+                packet = icmp_packet.clone();
+                payload = match packet_payload_to_string(icmp_packet){
+                    Ok(p) => p,
+                    Err(e) => {
+                        format!("Error converting packet payload to string {}", e).to_string()
+                    }
+                };
             }
             _ => {
                 transport_protocol = "Unknown".to_string();
                 source_port = 0;
                 destination_port = 0;
                 packet = Vec::<u8>::new();
+                payload = "Unknown".to_string();
             }
         }
-
-        let payload = match packet_payload_to_string(header.payload()){
-            Ok(p) => p,
-            Err(e) => {
-                eprintln!("Error converting packet payload to string: {}", e);
-                "Error converting packet payload to string".to_string()
-            }
-        };
 
         Ok(IPv6 {
             interface: interface_name,
@@ -211,9 +233,7 @@ impl std::fmt::Display for IPv6 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "({}) : IPv6-{} : {}:{} -> {}:{}
-            \tPacket: {:?}
-            \tPayload: {}",
+            "({}) : IPv6-{} : {}:{} -> {}:{}\n--\nPacket: {:?}\n--\nPayload: {}",
             self.interface,
             self.transport_protocol,
             self.source_ip,
@@ -239,6 +259,7 @@ pub struct Arp {
     pub destination_proto_address: Ipv4Addr,
     pub operation: String,
     pub packet: Vec<u8>,
+    pub payload: String
 }
 impl Arp {
     pub fn new(interface_name: String, ethernet_packet: &EthernetPacket) -> Result<Self, Box<dyn std::error::Error>> {
@@ -253,6 +274,15 @@ impl Arp {
             _ => "Unknown".to_string(),
         };
 
+        let packet_payload = header.payload().to_vec();
+
+        let payload = match packet_payload_to_string(packet_payload.clone()){
+            Ok(p) => p,
+            Err(e) => {
+                format!("Error converting packet payload to string {}", e).to_string()
+            }
+        };
+
         Ok(Arp {
             interface: interface_name,
             source_mac: ethernet_packet.get_source().to_string(),
@@ -260,7 +290,8 @@ impl Arp {
             destination_mac: ethernet_packet.get_destination().to_string(),
             destination_proto_address: header.get_target_proto_addr(),
             operation: operation_string,
-            packet: header.payload().to_vec()
+            packet: packet_payload,
+            payload: payload
         })
     }
 }
@@ -268,15 +299,15 @@ impl std::fmt::Display for Arp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "({}) : ARP {:?} : {}({}) -> {}({})
-            \tPacket: {:?}",
+            "({}) : ARP {:?} : {}({}) -> {}({})\n--\nPacket: {:?}\n--\nPayload: {}",
             self.interface,
             self.operation,
             self.source_mac,
             self.source_proto_address,
             self.destination_mac,
             self.destination_proto_address,
-            self.packet
+            self.packet,
+            self.payload
         )
     }
 }
