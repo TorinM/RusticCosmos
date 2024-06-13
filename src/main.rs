@@ -1,8 +1,6 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
 use tokio::signal;
 use tokio::sync::mpsc;
+use tokio::io::ErrorKind;
 
 use pnet::datalink::DataLinkReceiver;
 use pnet::packet::ethernet::EthernetPacket;
@@ -24,8 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let running = Arc::new(AtomicBool::new(true));
-
     let mut datalink_rx: Box<dyn DataLinkReceiver> = network::datalink::open_listener(&interface);
 
     let (tokio_tx, tokio_rx) = mpsc::channel(32);
@@ -37,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio_tx_clone.send(output::terminal::Event::Exit).await.unwrap();
     });
 
-    while running.load(Ordering::SeqCst) {
+    loop {
         match datalink_rx.next() {
             Ok(packet) => {
                 let ethernet_frame = match EthernetPacket::new(&packet) {
@@ -61,10 +57,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tokio_tx.send(output::terminal::Event::PrintMessage(message)).await.unwrap();
 
                 // 
-                // println!("{}", eth);
+                // println!("{}", eth);x
             },
             Err(e) => {
-                println!("An error occurred while reading: {}", e);
+                match e.kind() {
+                    ErrorKind::Interrupted => {
+                        println!("Interrupted.");
+                        break;
+                    },
+                    _ => {
+                        println!("An error occurred while reading: {}", e);
+                    }
+                }
             }
         }
     }
