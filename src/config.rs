@@ -24,14 +24,21 @@ pub static CONFIG: Lazy<Mutex<Config>> = Lazy::new(|| {
                 .short('i')
                 .long("interface")
                 .value_name("INTERFACE")
-                .help("Sets the network interface to use")
+                .help("Sets the network interface to use. Required")
                 .required(true),
+        ).arg(
+            Arg::new("filter")
+                .short('f')
+                .long("filter")
+                .value_name("FILTER")
+                .help("Sets the packet type(s) to filter to. Options: [tcp, udp, icmp, arp, all]. Include multiple types separated by commas. Optional. Default: all.")
+                .required(false),
         ).arg(
             Arg::new("output")
                 .short('o')
                 .long("output")
                 .value_name("OUTPUT FILE")
-                .help("Sets the output file to write to. Use relative or absolute path.")
+                .help("Sets the output file to write to. Optional. Default: stdout.")
                 .required(false),
         )
         .get_matches();
